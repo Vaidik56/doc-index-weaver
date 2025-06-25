@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, FileText, Plus } from "lucide-react";
+import { Settings, FileText, Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
