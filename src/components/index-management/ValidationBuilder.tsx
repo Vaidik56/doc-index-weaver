@@ -1,17 +1,16 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, X } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Trash2, Plus } from 'lucide-react';
 
-interface Validation {
+export interface Validation {
   type: string;
   value?: string;
-  message: string;
+  message?: string;
 }
 
 interface ValidationBuilderProps {
@@ -20,166 +19,130 @@ interface ValidationBuilderProps {
   fieldType: string;
 }
 
-const validationTypes = {
-  text: [
-    { type: 'required', label: 'Required', hasValue: false },
-    { type: 'minLength', label: 'Minimum Length', hasValue: true },
-    { type: 'maxLength', label: 'Maximum Length', hasValue: true },
-    { type: 'pattern', label: 'Pattern (Regex)', hasValue: true }
-  ],
-  number: [
-    { type: 'required', label: 'Required', hasValue: false },
-    { type: 'min', label: 'Minimum Value', hasValue: true },
-    { type: 'max', label: 'Maximum Value', hasValue: true }
-  ],
-  email: [
-    { type: 'required', label: 'Required', hasValue: false },
-    { type: 'email', label: 'Valid Email', hasValue: false }
-  ],
-  date: [
-    { type: 'required', label: 'Required', hasValue: false },
-    { type: 'minDate', label: 'Minimum Date', hasValue: true },
-    { type: 'maxDate', label: 'Maximum Date', hasValue: true }
-  ],
-  boolean: [
-    { type: 'required', label: 'Required', hasValue: false }
-  ],
-  select: [
-    { type: 'required', label: 'Required', hasValue: false }
-  ]
-};
+const ValidationBuilder: React.FC<ValidationBuilderProps> = ({
+  validations,
+  onChange,
+  fieldType
+}) => {
+  const getValidationOptions = (fieldType: string) => {
+    const commonValidations = [
+      { value: 'required', label: 'Required', hasValue: false },
+    ];
 
-export const ValidationBuilder = ({ validations, onChange, fieldType }: ValidationBuilderProps) => {
-  const [showAddValidation, setShowAddValidation] = useState(false);
-  const [newValidation, setNewValidation] = useState<Partial<Validation>>({});
+    const typeSpecificValidations: Record<string, any[]> = {
+      text: [
+        { value: 'minLength', label: 'Minimum Length', hasValue: true },
+        { value: 'maxLength', label: 'Maximum Length', hasValue: true },
+        { value: 'pattern', label: 'Pattern (Regex)', hasValue: true },
+      ],
+      number: [
+        { value: 'min', label: 'Minimum Value', hasValue: true },
+        { value: 'max', label: 'Maximum Value', hasValue: true },
+      ],
+      email: [
+        { value: 'email', label: 'Valid Email Format', hasValue: false },
+      ],
+      date: [
+        { value: 'minDate', label: 'Minimum Date', hasValue: true },
+        { value: 'maxDate', label: 'Maximum Date', hasValue: true },
+      ],
+    };
 
-  const availableValidations = validationTypes[fieldType as keyof typeof validationTypes] || [];
+    return [...commonValidations, ...(typeSpecificValidations[fieldType] || [])];
+  };
 
   const addValidation = () => {
-    if (newValidation.type) {
-      const validation: Validation = {
-        type: newValidation.type,
-        value: newValidation.value || '',
-        message: newValidation.message || `${newValidation.type} validation failed`
-      };
-      onChange([...validations, validation]);
-      setNewValidation({});
-      setShowAddValidation(false);
-    }
+    const newValidation: Validation = {
+      type: 'required',
+      message: 'This field is required'
+    };
+    onChange([...validations, newValidation]);
+  };
+
+  const updateValidation = (index: number, field: keyof Validation, value: string) => {
+    const updated = validations.map((validation, i) => 
+      i === index ? { ...validation, [field]: value } : validation
+    );
+    onChange(updated);
   };
 
   const removeValidation = (index: number) => {
     onChange(validations.filter((_, i) => i !== index));
   };
 
-  const hasValidationType = (type: string) => {
-    return validations.some(v => v.type === type);
-  };
+  const validationOptions = getValidationOptions(fieldType);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <Label className="text-base font-medium">Validations</Label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAddValidation(!showAddValidation)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Validation
-        </Button>
-      </div>
-
-      {validations.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {validations.map((validation, index) => (
-            <Badge key={index} variant="secondary" className="px-3 py-1">
-              {validation.type}
-              {validation.value && `: ${validation.value}`}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="ml-2 h-auto p-0 hover:bg-transparent"
-                onClick={() => removeValidation(index)}
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Validation Rules</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {validations.map((validation, index) => (
+          <div key={index} className="flex gap-3 items-end p-3 border rounded-md">
+            <div className="flex-1">
+              <Label className="text-sm">Validation Type</Label>
+              <Select
+                value={validation.type}
+                onValueChange={(value) => updateValidation(index, 'type', value)}
               >
-                <X className="w-3 h-3" />
-              </Button>
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {showAddValidation && (
-        <Card className="border-dashed">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Add New Validation</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Validation Type</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={newValidation.type || ''}
-                onChange={(e) => setNewValidation({...newValidation, type: e.target.value})}
-              >
-                <option value="">Select validation type</option>
-                {availableValidations
-                  .filter(v => !hasValidationType(v.type))
-                  .map((validation) => (
-                    <option key={validation.type} value={validation.type}>
-                      {validation.label}
-                    </option>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {validationOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
                   ))}
-              </select>
+                </SelectContent>
+              </Select>
             </div>
 
-            {newValidation.type && 
-             availableValidations.find(v => v.type === newValidation.type)?.hasValue && (
-              <div>
-                <Label>Value</Label>
+            {validationOptions.find(opt => opt.value === validation.type)?.hasValue && (
+              <div className="flex-1">
+                <Label className="text-sm">Value</Label>
                 <Input
-                  value={newValidation.value || ''}
-                  onChange={(e) => setNewValidation({...newValidation, value: e.target.value})}
+                  value={validation.value || ''}
+                  onChange={(e) => updateValidation(index, 'value', e.target.value)}
                   placeholder="Enter validation value"
                 />
               </div>
             )}
 
-            <div>
-              <Label>Error Message</Label>
+            <div className="flex-1">
+              <Label className="text-sm">Error Message</Label>
               <Input
-                value={newValidation.message || ''}
-                onChange={(e) => setNewValidation({...newValidation, message: e.target.value})}
-                placeholder="Custom error message (optional)"
+                value={validation.message || ''}
+                onChange={(e) => updateValidation(index, 'message', e.target.value)}
+                placeholder="Enter error message"
               />
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setNewValidation({});
-                  setShowAddValidation(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={addValidation}
-                disabled={!newValidation.type}
-              >
-                Add
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => removeValidation(index)}
+              className="text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addValidation}
+          className="w-full"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Validation Rule
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
+
+export default ValidationBuilder;

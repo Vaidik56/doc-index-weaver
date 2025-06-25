@@ -16,7 +16,7 @@ const Index = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -32,10 +32,12 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Upload, categorize, and search through your document collection with custom indexes.
               </p>
-              <Button className="w-full" disabled>
-                <Plus className="w-4 h-4 mr-2" />
-                Coming Soon
-              </Button>
+              <Link to="/documents">
+                <Button className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Upload Documents
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -96,12 +98,19 @@ const Index = () => {
                 Begin by setting up your document indexes to define how your documents will be categorized and validated
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Link to="/index-management">
-                <Button size="lg" className="font-semibold">
-                  Configure Your First Index
-                </Button>
-              </Link>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4 justify-center">
+                <Link to="/index-management">
+                  <Button size="lg" className="font-semibold">
+                    Configure Indexes
+                  </Button>
+                </Link>
+                <Link to="/documents">
+                  <Button size="lg" variant="outline" className="font-semibold">
+                    Upload Documents
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>
