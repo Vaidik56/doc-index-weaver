@@ -10,7 +10,7 @@ import { useIndexManagement } from '@/hooks/useIndexManagement';
 import { toast } from '@/hooks/use-toast';
 
 interface DocumentData {
-  [key: string]: string | number | Date;
+  [key: string]: string | number;
 }
 
 interface UploadedDocument {
@@ -39,9 +39,10 @@ const Documents = () => {
   };
 
   const handleFieldChange = (fieldName: string, value: string) => {
+    const numericValue = value && !isNaN(Number(value)) ? Number(value) : value;
     setDocumentData(prev => ({
       ...prev,
-      [fieldName]: value
+      [fieldName]: numericValue
     }));
   };
 
@@ -253,7 +254,7 @@ const Documents = () => {
                   </Label>
                   {subField.fieldType === 'text' && (
                     <Input
-                      value={documentData[subField.name] || ''}
+                      value={documentData[subField.name]?.toString() || ''}
                       onChange={(e) => handleFieldChange(subField.name, e.target.value)}
                       placeholder={subField.description}
                     />
@@ -261,7 +262,7 @@ const Documents = () => {
                   {subField.fieldType === 'number' && (
                     <Input
                       type="number"
-                      value={documentData[subField.name] || ''}
+                      value={documentData[subField.name]?.toString() || ''}
                       onChange={(e) => handleFieldChange(subField.name, e.target.value)}
                       placeholder={subField.description}
                     />
@@ -269,14 +270,14 @@ const Documents = () => {
                   {subField.fieldType === 'date' && (
                     <Input
                       type="date"
-                      value={documentData[subField.name] || ''}
+                      value={documentData[subField.name]?.toString() || ''}
                       onChange={(e) => handleFieldChange(subField.name, e.target.value)}
                     />
                   )}
                   {subField.fieldType === 'email' && (
                     <Input
                       type="email"
-                      value={documentData[subField.name] || ''}
+                      value={documentData[subField.name]?.toString() || ''}
                       onChange={(e) => handleFieldChange(subField.name, e.target.value)}
                       placeholder={subField.description}
                     />

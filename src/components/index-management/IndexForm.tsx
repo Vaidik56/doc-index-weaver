@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Search } from 'lucide-react';
 import { SubFieldSelector } from './SubFieldSelector';
-import { ValidationBuilder } from './ValidationBuilder';
+import ValidationBuilder from './ValidationBuilder';
 import { useIndexManagement, type Index, type SubField, type Validation } from '@/hooks/useIndexManagement';
 import { useSubFieldLibrary } from '@/hooks/useSubFieldLibrary';
 
