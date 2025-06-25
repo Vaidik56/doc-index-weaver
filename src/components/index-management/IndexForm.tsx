@@ -10,43 +10,32 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, X, Search } from 'lucide-react';
 import { SubFieldSelector } from './SubFieldSelector';
 import { ValidationBuilder } from './ValidationBuilder';
-import { toast } from '@/hooks/use-toast';
-
-interface SubField {
-  id: string;
-  name: string;
-  fieldType: string;
-  isRequired: boolean;
-  validations: Validation[];
-  isExisting?: boolean;
-}
-
-interface Validation {
-  type: string;
-  value?: string;
-  message: string;
-}
+import { useIndexManagement, type Index, type SubField, type Validation } from '@/hooks/useIndexManagement';
+import { useSubFieldLibrary } from '@/hooks/useSubFieldLibrary';
 
 interface IndexFormData {
   name: string;
   description: string;
   subFields: SubField[];
+  isActive: boolean;
 }
 
 interface IndexFormProps {
-  initialData?: any;
+  initialData?: Index;
   onClose: () => void;
 }
 
 export const IndexForm = ({ initialData, onClose }: IndexFormProps) => {
+  const { createIndex, updateIndex, isLoading } = useIndexManagement();
+  const { incrementUsage } = useSubFieldLibrary();
   const [showSubFieldSelector, setShowSubFieldSelector] = useState(false);
-  const [editingSubField, setEditingSubField] = useState<SubField | null>(null);
 
-  const { control, register, handleSubmit, watch, setValue } = useForm<IndexFormData>({
+  const { control, register, handleSubmit, formState: { errors } } = useForm<IndexFormData>({
     defaultValues: {
       name: initialData?.name || '',
       description: initialData?.description || '',
-      subFields: initialData?.subFields || []
+      subFields: initialData?.subFields || [],
+      isActive: initialData?.isActive ?? true
     }
   });
 
@@ -56,7 +45,9 @@ export const IndexForm = ({ initialData, onClose }: IndexFormProps) => {
   });
 
   const addExistingSubField = (subField: SubField) => {
-    append({ ...subField, isExisting: true });
+    const newSubField = { ...subField, isExisting: true };
+    append(newSubField);
+    incrementUsage(subField.id);
     setShowSubFieldSelector(false);
   };
 
@@ -72,25 +63,44 @@ export const IndexForm = ({ initialData, onClose }: IndexFormProps) => {
     append(newSubField);
   };
 
-  const onSubmit = (data: IndexFormData) => {
+  const onSubmit = async (data: IndexFormData) => {
     console.log('Submitting index:', data);
-    toast({
-      title: "Index saved successfully",
-      description: `${data.name} has been ${initialData ? 'updated' : 'created'}.`
-    });
-    onClose();
+    
+    try {
+      if (initialData) {
+        await updateIndex(initialData.id, {
+          name: data.name,
+          description: data.description,
+          subFields: data.subFields,
+          isActive: data.isActive
+        });
+      } else {
+        await createIndex({
+          name: data.name,
+          description: data.description,
+          subFields: data.subFields,
+          isActive: data.isActive
+        });
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error saving index:', error);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="grid gap-4">
         <div>
-          <Label htmlFor="name">Index Name</Label>
+          <Label htmlFor="name">Index Name *</Label>
           <Input
             id="name"
             {...register('name', { required: 'Index name is required' })}
             placeholder="e.g., Invoice Index"
           />
+          {errors.name && (
+            <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="description">Description</Label>
@@ -140,7 +150,6 @@ export const IndexForm = ({ initialData, onClose }: IndexFormProps) => {
                 key={field.id}
                 field={field}
                 index={index}
-                onEdit={() => setEditingSubField(field)}
                 onRemove={() => remove(index)}
                 onUpdate={(updatedField) => update(index, updatedField)}
               />
@@ -153,8 +162,8 @@ export const IndexForm = ({ initialData, onClose }: IndexFormProps) => {
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit">
-          {initialData ? 'Update Index' : 'Create Index'}
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Saving...' : (initialData ? 'Update Index' : 'Create Index')}
         </Button>
       </div>
 
@@ -171,12 +180,11 @@ export const IndexForm = ({ initialData, onClose }: IndexFormProps) => {
 interface SubFieldCardProps {
   field: SubField;
   index: number;
-  onEdit: () => void;
   onRemove: () => void;
   onUpdate: (field: SubField) => void;
 }
 
-const SubFieldCard = ({ field, index, onEdit, onRemove, onUpdate }: SubFieldCardProps) => {
+const SubFieldCard = ({ field, index, onRemove, onUpdate }: SubFieldCardProps) => {
   const [isEditing, setIsEditing] = useState(!field.name);
   const [localField, setLocalField] = useState(field);
 
@@ -192,7 +200,7 @@ const SubFieldCard = ({ field, index, onEdit, onRemove, onUpdate }: SubFieldCard
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Field Name</Label>
+                <Label>Field Name *</Label>
                 <Input
                   value={localField.name}
                   onChange={(e) => setLocalField({...localField, name: e.target.value})}
@@ -216,6 +224,16 @@ const SubFieldCard = ({ field, index, onEdit, onRemove, onUpdate }: SubFieldCard
               </div>
             </div>
             
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={localField.isRequired}
+                onChange={(e) => setLocalField({...localField, isRequired: e.target.checked})}
+                className="rounded"
+              />
+              <Label>Required Field</Label>
+            </div>
+            
             <ValidationBuilder
               validations={localField.validations}
               onChange={(validations) => setLocalField({...localField, validations})}
@@ -226,7 +244,7 @@ const SubFieldCard = ({ field, index, onEdit, onRemove, onUpdate }: SubFieldCard
               <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
-              <Button type="button" onClick={handleSave}>
+              <Button type="button" onClick={handleSave} disabled={!localField.name}>
                 Save Field
               </Button>
             </div>

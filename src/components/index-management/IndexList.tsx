@@ -3,43 +3,40 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Settings } from 'lucide-react';
+import { Plus, Edit, Settings, Trash2, Power } from 'lucide-react';
 import { IndexForm } from './IndexForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-
-interface Index {
-  id: string;
-  name: string;
-  description: string;
-  fieldCount: number;
-  isActive: boolean;
-  createdAt: string;
-}
-
-// Mock data - replace with actual data fetching
-const mockIndexes: Index[] = [
-  {
-    id: '1',
-    name: 'Invoice Index',
-    description: 'Standard invoice indexing fields',
-    fieldCount: 5,
-    isActive: true,
-    createdAt: '2024-01-15'
-  },
-  {
-    id: '2',
-    name: 'Contract Index',
-    description: 'Legal contract document fields',
-    fieldCount: 8,
-    isActive: true,
-    createdAt: '2024-01-10'
-  }
-];
+import { useIndexManagement } from '@/hooks/useIndexManagement';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export const IndexList = () => {
-  const [indexes] = useState<Index[]>(mockIndexes);
+  const { indexes, isLoading, deleteIndex, toggleIndexStatus } = useIndexManagement();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<Index | null>(null);
+  const [editingIndex, setEditingIndex] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteIndex(id);
+    } catch (error) {
+      console.error('Failed to delete index:', error);
+    }
+  };
+
+  const handleToggleStatus = async (id: string) => {
+    try {
+      await toggleIndexStatus(id);
+    } catch (error) {
+      console.error('Failed to toggle index status:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <div className="text-muted-foreground">Loading indexes...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -105,9 +102,36 @@ export const IndexList = () => {
                       />
                     </DialogContent>
                   </Dialog>
-                  <Button variant="outline" size="sm">
-                    <Settings className="w-4 h-4" />
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleToggleStatus(index.id)}
+                  >
+                    <Power className="w-4 h-4" />
                   </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Index</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{index.name}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(index.id)}>
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardContent>
