@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, X } from 'lucide-react';
-import { useIndexManagement } from '@/hooks/useIndexManagement';
+import { useDocumentTypes } from '@/hooks/useDocumentTypes';
 import { toast } from '@/hooks/use-toast';
 
 interface DocumentData {
@@ -17,14 +17,14 @@ interface UploadedDocument {
   id: string;
   name: string;
   file: File;
-  indexId: string;
+  documentTypeId: string;
   data: DocumentData;
   uploadedAt: Date;
 }
 
 const Documents = () => {
-  const { indexes } = useIndexManagement();
-  const [selectedIndex, setSelectedIndex] = useState<string>('');
+  const { documentTypes, getAllFieldsForDocumentType } = useDocumentTypes();
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [documentData, setDocumentData] = useState<DocumentData>({});
@@ -47,27 +47,26 @@ const Documents = () => {
   };
 
   const validateDocument = () => {
-    const selectedIndexData = indexes.find(idx => idx.id === selectedIndex);
-    if (!selectedIndexData) return false;
-
-    for (const subField of selectedIndexData.subFields) {
-      if (subField.isRequired && !documentData[subField.name]) {
+    const allFields = getAllFieldsForDocumentType(selectedDocumentType);
+    
+    for (const field of allFields) {
+      if (field.isRequired && !documentData[field.name]) {
         toast({
           title: "Validation Error",
-          description: `${subField.name} is required`,
+          description: `${field.name} (from ${field.indexName}) is required`,
           variant: "destructive"
         });
         return false;
       }
 
       // Additional validation based on field type and validation rules
-      for (const validation of subField.validations) {
-        const value = documentData[subField.name];
+      for (const validation of field.validations) {
+        const value = documentData[field.name];
         
         if (validation.type === 'minLength' && value && value.toString().length < parseInt(validation.value || '0')) {
           toast({
             title: "Validation Error",
-            description: validation.message || `${subField.name} is too short`,
+            description: validation.message || `${field.name} is too short`,
             variant: "destructive"
           });
           return false;
@@ -76,7 +75,7 @@ const Documents = () => {
         if (validation.type === 'maxLength' && value && value.toString().length > parseInt(validation.value || '0')) {
           toast({
             title: "Validation Error",
-            description: validation.message || `${subField.name} is too long`,
+            description: validation.message || `${field.name} is too long`,
             variant: "destructive"
           });
           return false;
@@ -85,7 +84,7 @@ const Documents = () => {
         if (validation.type === 'min' && value && parseInt(value.toString()) < parseInt(validation.value || '0')) {
           toast({
             title: "Validation Error",
-            description: validation.message || `${subField.name} is below minimum value`,
+            description: validation.message || `${field.name} is below minimum value`,
             variant: "destructive"
           });
           return false;
@@ -94,7 +93,7 @@ const Documents = () => {
         if (validation.type === 'max' && value && parseInt(value.toString()) > parseInt(validation.value || '0')) {
           toast({
             title: "Validation Error",
-            description: validation.message || `${subField.name} exceeds maximum value`,
+            description: validation.message || `${field.name} exceeds maximum value`,
             variant: "destructive"
           });
           return false;
@@ -106,10 +105,10 @@ const Documents = () => {
   };
 
   const handleSubmit = () => {
-    if (!selectedIndex) {
+    if (!selectedDocumentType) {
       toast({
         title: "Error",
-        description: "Please select an index",
+        description: "Please select a document type",
         variant: "destructive"
       });
       return;
@@ -134,7 +133,7 @@ const Documents = () => {
         id: `doc_${Date.now()}_${Math.random()}`,
         name: file.name,
         file,
-        indexId: selectedIndex,
+        documentTypeId: selectedDocumentType,
         data: { ...documentData },
         uploadedAt: new Date()
       };
@@ -145,7 +144,7 @@ const Documents = () => {
     // Reset form
     setUploadedFiles([]);
     setDocumentData({});
-    setSelectedIndex('');
+    setSelectedDocumentType('');
 
     toast({
       title: "Success",
@@ -153,14 +152,25 @@ const Documents = () => {
     });
   };
 
-  const selectedIndexData = indexes.find(idx => idx.id === selectedIndex);
+  const allFields = selectedDocumentType ? getAllFieldsForDocumentType(selectedDocumentType) : [];
+  const selectedDocumentTypeData = documentTypes.find(dt => dt.id === selectedDocumentType);
+
+  // Group fields by index name for better organization
+  const fieldsByIndex = allFields.reduce((acc, field) => {
+    const indexName = field.indexName;
+    if (!acc[indexName]) {
+      acc[indexName] = [];
+    }
+    acc[indexName].push(field);
+    return acc;
+  }, {} as Record<string, typeof allFields>);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Document Management</h1>
         <p className="text-muted-foreground">
-          Upload and manage documents with custom index data
+          Upload and manage documents by selecting a document type
         </p>
       </div>
 
@@ -170,24 +180,29 @@ const Documents = () => {
           <CardHeader>
             <CardTitle>Upload Documents</CardTitle>
             <CardDescription>
-              Select an index and upload your documents
+              Select a document type and upload your documents
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Select Index</Label>
-              <Select value={selectedIndex} onValueChange={setSelectedIndex}>
+              <Label>Select Document Type</Label>
+              <Select value={selectedDocumentType} onValueChange={setSelectedDocumentType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose an index" />
+                  <SelectValue placeholder="Choose a document type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {indexes.map(index => (
-                    <SelectItem key={index.id} value={index.id}>
-                      {index.name}
+                  {documentTypes.map(docType => (
+                    <SelectItem key={docType.id} value={docType.id}>
+                      {docType.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedDocumentTypeData && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedDocumentTypeData.description}
+                </p>
+              )}
             </div>
 
             <div>
@@ -236,61 +251,70 @@ const Documents = () => {
           </CardContent>
         </Card>
 
-        {/* Index Data Section */}
+        {/* Document Type Fields Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Index Data</CardTitle>
+            <CardTitle>Document Fields</CardTitle>
             <CardDescription>
-              Fill in the index fields for your documents
+              Fill in the required fields for your document type
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedIndexData ? (
-              selectedIndexData.subFields.map(subField => (
-                <div key={subField.id}>
-                  <Label>
-                    {subField.name}
-                    {subField.isRequired && <span className="text-red-500 ml-1">*</span>}
-                  </Label>
-                  {subField.fieldType === 'text' && (
-                    <Input
-                      value={documentData[subField.name]?.toString() || ''}
-                      onChange={(e) => handleFieldChange(subField.name, e.target.value)}
-                      placeholder={subField.description}
-                    />
-                  )}
-                  {subField.fieldType === 'number' && (
-                    <Input
-                      type="number"
-                      value={documentData[subField.name]?.toString() || ''}
-                      onChange={(e) => handleFieldChange(subField.name, e.target.value)}
-                      placeholder={subField.description}
-                    />
-                  )}
-                  {subField.fieldType === 'date' && (
-                    <Input
-                      type="date"
-                      value={documentData[subField.name]?.toString() || ''}
-                      onChange={(e) => handleFieldChange(subField.name, e.target.value)}
-                    />
-                  )}
-                  {subField.fieldType === 'email' && (
-                    <Input
-                      type="email"
-                      value={documentData[subField.name]?.toString() || ''}
-                      onChange={(e) => handleFieldChange(subField.name, e.target.value)}
-                      placeholder={subField.description}
-                    />
-                  )}
+          <CardContent className="space-y-6">
+            {selectedDocumentType ? (
+              Object.entries(fieldsByIndex).map(([indexName, fields]) => (
+                <div key={indexName} className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                      {indexName}
+                    </h3>
+                  </div>
+                  {fields.map(field => (
+                    <div key={`${field.indexId}_${field.id}`}>
+                      <Label>
+                        {field.name}
+                        {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
+                      {field.fieldType === 'text' && (
+                        <Input
+                          value={documentData[field.name]?.toString() || ''}
+                          onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                          placeholder={field.description}
+                        />
+                      )}
+                      {field.fieldType === 'number' && (
+                        <Input
+                          type="number"
+                          value={documentData[field.name]?.toString() || ''}
+                          onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                          placeholder={field.description}
+                        />
+                      )}
+                      {field.fieldType === 'date' && (
+                        <Input
+                          type="date"
+                          value={documentData[field.name]?.toString() || ''}
+                          onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                        />
+                      )}
+                      {field.fieldType === 'email' && (
+                        <Input
+                          type="email"
+                          value={documentData[field.name]?.toString() || ''}
+                          onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                          placeholder={field.description}
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
               ))
             ) : (
               <p className="text-gray-500 text-center py-8">
-                Select an index to see its fields
+                Select a document type to see its fields
               </p>
             )}
 
-            {selectedIndexData && (
+            {selectedDocumentType && (
               <Button 
                 onClick={handleSubmit}
                 className="w-full"
@@ -309,28 +333,36 @@ const Documents = () => {
           <CardHeader>
             <CardTitle>Uploaded Documents</CardTitle>
             <CardDescription>
-              Recently uploaded documents with their index data
+              Recently uploaded documents with their field data
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {documents.map(doc => (
-                <div key={doc.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold">{doc.name}</h3>
-                    <span className="text-sm text-gray-500">
-                      {doc.uploadedAt.toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {Object.entries(doc.data).map(([key, value]) => (
-                      <div key={key}>
-                        <span className="font-medium">{key}:</span> {value?.toString()}
+              {documents.map(doc => {
+                const docType = documentTypes.find(dt => dt.id === doc.documentTypeId);
+                return (
+                  <div key={doc.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold">{doc.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Type: {docType?.name}
+                        </p>
                       </div>
-                    ))}
+                      <span className="text-sm text-gray-500">
+                        {doc.uploadedAt.toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {Object.entries(doc.data).map(([key, value]) => (
+                        <div key={key}>
+                          <span className="font-medium">{key}:</span> {value?.toString()}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
