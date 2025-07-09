@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, FileText, Plus, Search } from "lucide-react";
+import { Settings, FileText, Plus, Search, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
@@ -61,6 +61,31 @@ const Index = () => {
                 <Button className="w-full">
                   <Settings className="w-4 h-4 mr-2" />
                   Manage Indexes
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Wrench className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <CardTitle>Field Builder</CardTitle>
+                  <CardDescription>Create custom fields</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Build custom fields with validation rules and real-time preview.
+              </p>
+              <Link to="/field-builder">
+                <Button className="w-full">
+                  <Wrench className="w-4 h-4 mr-2" />
+                  Build Fields
                 </Button>
               </Link>
             </CardContent>
